@@ -1,0 +1,81 @@
+---
+title: "week1-lab.qmd"
+author: "Sarayu Ramnath"
+format: html
+editor: visual
+---
+
+## Setup
+
+```{r}
+#| eval: true
+#| echo: true
+#| message: false
+#| warning: false
+# load packages ----
+library(here)
+library(janitor)
+library(tidyverse)
+
+```
+
+Loading bee stressor data
+
+```{r}
+#| echo: false
+stressor_raw <-read_csv(here::here("week1", "data", "stressor.csv"))
+```
+
+First viewing of stressor data
+
+-   chopped & unc
+
+-   going to address the random characters in "state" "stressor"
+
+    ```{r}
+    clean_stressor <- stressor_raw |>
+      mutate(state = str_replace_all(state, "[^A-Za-z]",""),
+    stressor= str_replace_all(stressor, "[^A-Za-z]",""), 
+    stressor= str_replace(stressor, "Disesases", "Diseases")) |>
+      
+      janitor::clean_names()|>
+      #pivot
+      pivot_longer(
+        cols = "january_march":"october_december", 
+        names_to = "months", 
+        values_to = "stress_percent"
+      ) |>
+      
+      #mutate to convert months to quarter number (create new column)
+    mutate(quarter = case_when(
+      months == "january_march"~1,
+      months == "april_june"~2,
+      months == "july_september"~3,
+      months == "october_december"~4
+      
+    ))|>
+      #remove US & other states from states column
+      filter(state !="UnitedStates", state !="OtherStates")
+
+    #filter for what we want with a new data to play on with a stingle state & stressor, and group by year and quarter to 
+
+    NM_varr<-clean_stressor|>
+      filter(state =="NewMexico", stressor== "Varroamites")|>
+      drop_na()|>
+    group_by(year,quarter) |>
+      summarise(avg=mean(stress_percent))
+
+    #create data viz 
+    library(ggplot2)
+    theme_set(theme_classic())
+
+    # Plot
+    g <- ggplot(NM_varr, aes(year))
+    g + geom_density(aes(fill=factor(quarter)), alpha=0.8) + 
+        labs(title="Varroamite Stressors Impact in New Mexico", 
+             subtitle="Average Density Colonies Varroamites Impacted",
+             caption="Source: UDSA",
+             x="Year",
+             fill="Quarter")
+
+    ```
